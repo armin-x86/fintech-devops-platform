@@ -5,6 +5,7 @@
 # - Minimal runtime image
 
 FROM node:20-alpine AS base
+RUN apk upgrade --no-cache
 WORKDIR /app
 ENV NODE_ENV=production
 
