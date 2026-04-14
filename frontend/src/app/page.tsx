@@ -1,6 +1,8 @@
 import { InsightsPanel, type Insight } from './components/InsightsPanel';
 import { AssetsTable, type Asset } from './components/AssetsTable';
 
+export const dynamic = 'force-dynamic';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 async function getAssets(): Promise<Asset[]> {
