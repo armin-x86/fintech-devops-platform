@@ -53,6 +53,32 @@ helm upgrade --install fintech-frontend frontend/helm/frontend --namespace finte
 
 The **mocked** deploy workflow (`.github/workflows/deploy.yml`) only **prints** these-style values; it does not run `helm` for you.
 
+### Helm commands (render + upgrade)
+
+Render manifests locally (no cluster changes) to verify templating and values.
+
+```bash
+# Backend
+cd backend/helm/backend
+helm template backend . -f values.yaml
+
+# Frontend
+cd ../../../frontend/helm/frontend
+helm template frontend . -f values.yaml
+```
+
+Deploy/upgrade to a cluster (applies changes).
+
+```bash
+# Backend
+cd backend/helm/backend
+helm upgrade --install fintech-backend . -n fintech --create-namespace -f values.yaml
+
+# Frontend
+cd ../../../frontend/helm/frontend
+helm upgrade --install fintech-frontend . -n fintech -f values.yaml
+```
+
 ## CI/CD overview
 
 - **GitHub Actions → AWS**: add repository **variable** **`AWS_ROLE_ARN`** = Terraform output `github_actions_ecr_role_arn` (OIDC; no long-lived AWS keys). The workflow uses `vars.AWS_ROLE_ARN` for `configure-aws-credentials`.

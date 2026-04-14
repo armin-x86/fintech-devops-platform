@@ -23,7 +23,7 @@ logger = logging.getLogger("app")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.getenv("CORS_ALLOW_ORIGINS", "*").split(","),
+    allow_origins=os.getenv("CORS_ALLOW_ORIGINS", "*").split(","), # CORS should be set to our domain but in my test env without LB and live app, I wasn't able to set it to specific rule
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

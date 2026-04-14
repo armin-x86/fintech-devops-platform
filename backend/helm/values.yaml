@@ -20,5 +20,8 @@ resources:
 
 env:
   LOG_LEVEL: INFO
-  CORS_ALLOW_ORIGINS: "*"
+  # Comma-separated list of allowed browser origins for the API (CORS).
+  # Example: "https://portfolio.ateimouri.com,http://localhost:3000"
+  # Prefer setting this to your exact frontend origin(s) in prod.
+  CORS_ALLOW_ORIGINS: "https://portfolio.ateimouri.com"
 

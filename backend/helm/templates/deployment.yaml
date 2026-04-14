@@ -28,7 +28,11 @@ spec:
             - name: LOG_LEVEL
               value: {{ .Values.env.LOG_LEVEL | quote }}
             - name: CORS_ALLOW_ORIGINS
+              {{- if kindIs "slice" .Values.env.CORS_ALLOW_ORIGINS }}
+              value: {{ join "," .Values.env.CORS_ALLOW_ORIGINS | quote }}
+              {{- else }}
               value: {{ .Values.env.CORS_ALLOW_ORIGINS | quote }}
+              {{- end }}
           readinessProbe:
             httpGet:
               path: /health
