@@ -1,0 +1,21 @@
+formatter: markdown table
+
+version: 0.20.0
+
+header-from: main.tf
+
+output:
+  file: README.md
+  mode: replace
+  template: |-
+    <!-- BEGIN_TF_DOCS -->
+    {{ .Content }}
+    <!-- END_TF_DOCS -->
+    {{/** End of file fixer */}}
+
+sort:
+  enabled: true
+  by: name
+
+settings:
+  hide-empty: true

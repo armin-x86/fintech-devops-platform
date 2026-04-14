@@ -1,0 +1,24 @@
+replicaCount: 2
+
+image:
+  # ECR: <account>.dkr.ecr.<region>.amazonaws.com/fence-backend
+  repository: 216315649159.dkr.ecr.eu-west-1.amazonaws.com/fence-backend
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8000
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+env:
+  LOG_LEVEL: INFO
+  CORS_ALLOW_ORIGINS: "*"
+

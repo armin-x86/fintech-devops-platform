@@ -1,0 +1,231 @@
+# CI: path-based — backend / frontend jobs run only when matching paths change.
+# Shared triggers: workflow file + docker-compose affect both (re-run full relevant checks).
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: read
+  id-token: write
+
+env:
+  AWS_REGION: eu-west-1
+  ECR_BACKEND_REPO: fence-backend
+  ECR_FRONTEND_REPO: fence-frontend
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - '.github/workflows/ci.yml'
+              - 'docker-compose.yml'
+            frontend:
+              - 'frontend/**'
+              - '.github/workflows/ci.yml'
+              - 'docker-compose.yml'
+
+  backend-lint-test:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest httpx==0.27.0 ruff pip-audit
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Tests (pytest)
+        env:
+          LOG_LEVEL: WARNING
+        run: pytest -q
+
+      - name: Python dependency security audit (pip-audit)
+        run: pip-audit -r requirements.txt
+
+  frontend-lint-build:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+      - name: Lint (next)
+        run: npm run lint
+
+      - name: Build (next)
+        run: npm run build
+
+  docker-build-and-push-ecr:
+    needs: [changes, backend-lint-test, frontend-lint-build]
+    if: >
+      always() &&
+      (needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true') &&
+      (needs.changes.outputs.backend != 'true' || needs.backend-lint-test.result == 'success') &&
+      (needs.changes.outputs.frontend != 'true' || needs.frontend-lint-build.result == 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Configure AWS credentials (OIDC → IAM role)
+        if: github.event_name == 'push'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        if: github.event_name == 'push'
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push backend → ECR
+        if: github.event_name == 'push' && needs.changes.outputs.backend == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          target: runtime
+          push: true
+          tags: |
+            ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_BACKEND_REPO }}:${{ github.sha }}
+            ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_BACKEND_REPO }}:latest
+
+      - name: Build and push frontend → ECR
+        if: github.event_name == 'push' && needs.changes.outputs.frontend == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: frontend/Dockerfile
+          target: runtime
+          push: true
+          tags: |
+            ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_FRONTEND_REPO }}:${{ github.sha }}
+            ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_FRONTEND_REPO }}:latest
+
+      - name: Build images only (PR — no ECR)
+        if: github.event_name == 'pull_request'
+        run: |
+          if [ "${{ needs.changes.outputs.backend }}" = "true" ]; then
+            docker build -t fence-backend:ci -f backend/Dockerfile --target runtime .
+          fi
+          if [ "${{ needs.changes.outputs.frontend }}" = "true" ]; then
+            docker build -t fence-frontend:ci -f frontend/Dockerfile --target runtime .
+          fi
+
+  container-structure-tests:
+    runs-on: ubuntu-latest
+    needs: [changes, docker-build-and-push-ecr]
+    if: always() && needs.docker-build-and-push-ecr.result == 'success'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build images locally for structure tests
+        run: |
+          if [ "${{ needs.changes.outputs.backend }}" = "true" ]; then
+            docker build -t backend:test -f backend/Dockerfile --target runtime .
+          fi
+          if [ "${{ needs.changes.outputs.frontend }}" = "true" ]; then
+            docker build -t frontend:test -f frontend/Dockerfile --target runtime .
+          fi
+
+      - name: Install container-structure-test
+        run: |
+          curl -fsSL -o /usr/local/bin/container-structure-test \
+            https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64
+          chmod +x /usr/local/bin/container-structure-test
+
+      - name: Run structure tests
+        run: |
+          if [ "${{ needs.changes.outputs.backend }}" = "true" ]; then
+            container-structure-test test --image backend:test --config tests/container-structure/backend.yaml
+          fi
+          if [ "${{ needs.changes.outputs.frontend }}" = "true" ]; then
+            container-structure-test test --image frontend:test --config tests/container-structure/frontend.yaml
+          fi
+
+  trivy-container-scan:
+    runs-on: ubuntu-latest
+    needs: [changes, docker-build-and-push-ecr]
+    if: >
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.docker-build-and-push-ecr.result == 'success'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build images for scanning
+        run: |
+          if [ "${{ needs.changes.outputs.backend }}" = "true" ]; then
+            docker build -t backend:scan -f backend/Dockerfile --target runtime .
+          fi
+          if [ "${{ needs.changes.outputs.frontend }}" = "true" ]; then
+            docker build -t frontend:scan -f frontend/Dockerfile --target runtime .
+          fi
+
+      - name: Scan backend image (Trivy)
+        if: needs.changes.outputs.backend == 'true'
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: backend:scan
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          severity: "CRITICAL,HIGH"
+
+      - name: Scan frontend image (Trivy)
+        if: needs.changes.outputs.frontend == 'true'
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: frontend:scan
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          severity: "CRITICAL,HIGH"

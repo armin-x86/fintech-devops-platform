@@ -1,0 +1,77 @@
+# Deploy (mocked): image URIs align with ECR repos fence-backend / fence-frontend.
+# Set GitHub variable AWS_ACCOUNT_ID (12 digits) or replace in helm --set manually.
+
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy (defaults to commit SHA)"
+        required: false
+        type: string
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: eu-west-1
+  EKS_CLUSTER_NAME: app-euw-1
+  NAMESPACE: fintech
+  RELEASE_FRONTEND: fintech-frontend
+  RELEASE_BACKEND: fintech-backend
+  ECR_BACKEND_REPO: fence-backend
+  ECR_FRONTEND_REPO: fence-frontend
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute image tag and registry
+        id: meta
+        env:
+          ACCOUNT: ${{ vars.AWS_ACCOUNT_ID }}
+        run: |
+          if [ -n "${{ inputs.image_tag }}" ]; then
+            echo "tag=${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -n "$ACCOUNT" ]; then
+            echo "registry=${ACCOUNT}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com" >> "$GITHUB_OUTPUT"
+          else
+            echo "registry=<AWS_ACCOUNT_ID>.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Mocked staging deploy (helm commands use ECR image repos)
+        run: |
+          REG="${{ steps.meta.outputs.registry }}"
+          TAG="${{ steps.meta.outputs.tag }}"
+          echo "Backend image:  ${REG}/${ECR_BACKEND_REPO}:${TAG}"
+          echo "Frontend image: ${REG}/${ECR_FRONTEND_REPO}:${TAG}"
+          echo "Example (after aws eks update-kubeconfig):"
+          echo "helm upgrade --install ${RELEASE_BACKEND} backend/helm/backend --namespace ${NAMESPACE} --create-namespace \\"
+          echo "  --set image.repository=${REG}/${ECR_BACKEND_REPO} --set image.tag=${TAG}"
+          echo "helm upgrade --install ${RELEASE_FRONTEND} frontend/helm/frontend --namespace ${NAMESPACE} \\"
+          echo "  --set image.repository=${REG}/${ECR_FRONTEND_REPO} --set image.tag=${TAG}"
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: [deploy-staging]
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Production gate
+        run: |
+          echo "Uses GitHub Environment 'production' for manual approval (configure reviewers in repo settings)."
+
+      - name: Mocked production deploy
+        run: |
+          echo "Same as staging with production cluster/namespace and approvals."

@@ -1,0 +1,11 @@
+schemaVersion: "2.0.0"
+
+metadataTest:
+  exposedPorts: ["3000"]
+  user: "nextjs"
+
+commandTests:
+  - name: "node present"
+    command: "node"
+    args: ["--version"]
+
