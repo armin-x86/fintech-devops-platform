@@ -1,0 +1,11 @@
+schemaVersion: "2.0.0"
+
+metadataTest:
+  exposedPorts: ["8000"]
+  user: "app"
+
+commandTests:
+  - name: "gunicorn exists"
+    command: "gunicorn"
+    args: ["--version"]
+

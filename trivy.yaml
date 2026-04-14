@@ -1,0 +1,22 @@
+scan:
+  scanners:
+    - vuln
+    - secret
+  skip-dirs:
+    - .cache/trivy
+    - ansible
+  skip-files:
+    - "**/.terraform/**/*.yaml"
+
+cache:
+  dir: .cache/trivy
+
+severity:
+  - CRITICAL
+  - HIGH
+  - MEDIUM
+
+db:
+  skip-update: false
+  no-progress: false
+  repository: public.ecr.aws/aquasecurity/trivy-db:2

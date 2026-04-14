@@ -1,0 +1,29 @@
+replicaCount: 2
+
+image:
+  repository: 216315649159.dkr.ecr.eu-west-1.amazonaws.com/fence-frontend
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 3000
+
+ingress:
+  enabled: true
+  className: alb
+  host: portfolio.ateimouri.com
+  scheme: internet-facing
+  targetType: ip
+
+env:
+  NEXT_PUBLIC_API_URL: "http://backend:8000"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+

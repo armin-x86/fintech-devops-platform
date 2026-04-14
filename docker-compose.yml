@@ -1,0 +1,36 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: dev
+    environment:
+      - LOG_LEVEL=INFO
+      - CORS_ALLOW_ORIGINS=http://localhost:3000
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/app:/app/app:delegated
+      - ./backend/tests:/app/tests:delegated
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health').read()"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      target: dev
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./frontend:/app:delegated
+      - /app/node_modules
+      - /app/.next

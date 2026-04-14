@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "backend.fullname" . }}-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "backend.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        # Allow traffic from the frontend pods in the same namespace (typical EKS + AWS LB Ingress Controller setup)
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: frontend
+      ports:
+        - protocol: TCP
+          port: 8000
+
