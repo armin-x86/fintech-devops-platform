@@ -147,8 +147,9 @@ jobs:
           target: runtime
           load: true
           tags: fence-frontend:ci
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # For security scanning we want the deps layer to reflect current lockfile,
+          # not a previously cached node_modules tree.
+          no-cache: true
 
       - name: Export backend image artifact (tar)
         if: needs.changes.outputs.backend == 'true'
