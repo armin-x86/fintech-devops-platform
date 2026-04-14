@@ -153,20 +153,20 @@ jobs:
       - name: Export backend image artifact (tar)
         if: needs.changes.outputs.backend == 'true'
         run: |
-          mkdir -p .image-artifacts
-          docker save fence-backend:ci -o .image-artifacts/fence-backend_ci.tar
+          mkdir -p image-artifacts
+          docker save fence-backend:ci -o image-artifacts/fence-backend_ci.tar
 
       - name: Export frontend image artifact (tar)
         if: needs.changes.outputs.frontend == 'true'
         run: |
-          mkdir -p .image-artifacts
-          docker save fence-frontend:ci -o .image-artifacts/fence-frontend_ci.tar
+          mkdir -p image-artifacts
+          docker save fence-frontend:ci -o image-artifacts/fence-frontend_ci.tar
 
       - name: Verify exported image artifacts exist
         run: |
           echo "Artifacts directory contents:"
-          ls -la .image-artifacts || true
-          count="$(ls -1 .image-artifacts/*.tar 2>/dev/null | wc -l | tr -d ' ')"
+          ls -la image-artifacts || true
+          count="$(ls -1 image-artifacts/*.tar 2>/dev/null | wc -l | tr -d ' ')"
           echo "Found ${count} tar files"
           test "${count}" -gt 0
 
@@ -176,7 +176,7 @@ jobs:
         with:
           name: docker-images
           # Avoid glob edge-cases; upload the directory.
-          path: .image-artifacts
+          path: image-artifacts
           if-no-files-found: error
 
   container-structure-tests:
@@ -190,15 +190,15 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: docker-images
-          path: .image-artifacts
+          path: image-artifacts
 
       - name: Load images into Docker
         run: |
           if [ "${{ needs.changes.outputs.backend }}" = "true" ]; then
-            docker load -i .image-artifacts/fence-backend_ci.tar
+            docker load -i image-artifacts/fence-backend_ci.tar
           fi
           if [ "${{ needs.changes.outputs.frontend }}" = "true" ]; then
-            docker load -i .image-artifacts/fence-frontend_ci.tar
+            docker load -i image-artifacts/fence-frontend_ci.tar
           fi
 
       - name: Install container-structure-test
@@ -227,15 +227,15 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: docker-images
-          path: .image-artifacts
+          path: image-artifacts
 
       - name: Load images into Docker
         run: |
           if [ "${{ needs.changes.outputs.backend }}" = "true" ]; then
-            docker load -i .image-artifacts/fence-backend_ci.tar
+            docker load -i image-artifacts/fence-backend_ci.tar
           fi
           if [ "${{ needs.changes.outputs.frontend }}" = "true" ]; then
-            docker load -i .image-artifacts/fence-frontend_ci.tar
+            docker load -i image-artifacts/fence-frontend_ci.tar
           fi
 
       - name: Scan backend image (Trivy)
@@ -277,15 +277,15 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: docker-images
-          path: .image-artifacts
+          path: image-artifacts
 
       - name: Load images into Docker
         run: |
           if [ "${{ needs.changes.outputs.backend }}" = "true" ]; then
-            docker load -i .image-artifacts/fence-backend_ci.tar
+            docker load -i image-artifacts/fence-backend_ci.tar
           fi
           if [ "${{ needs.changes.outputs.frontend }}" = "true" ]; then
-            docker load -i .image-artifacts/fence-frontend_ci.tar
+            docker load -i image-artifacts/fence-frontend_ci.tar
           fi
 
       - name: Configure AWS credentials
