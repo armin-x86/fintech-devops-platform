@@ -175,7 +175,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: docker-images
-          path: .image-artifacts/*.tar
+          # Avoid glob edge-cases; upload the directory.
+          path: .image-artifacts
           if-no-files-found: error
 
   container-structure-tests:
