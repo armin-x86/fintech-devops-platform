@@ -14,6 +14,9 @@ permissions:
   id-token: write
 
 env:
+  # Opt into Node.js 24 for JavaScript-based GitHub Actions.
+  # This avoids upcoming runner default changes and deprecation warnings.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   AWS_REGION: eu-west-1
   ECR_BACKEND_REPO: fence-backend
   ECR_FRONTEND_REPO: fence-frontend
@@ -103,8 +106,8 @@ jobs:
       - name: Build (next)
         run: npm run build
 
-  docker-build-and-push-ecr:
-    name: Build images locally
+  docker-build:
+    name: Build images (once) and export artifacts
     needs: [changes, backend-lint-test, frontend-lint-build]
     if: >
       always() &&
@@ -116,20 +119,72 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: docker/setup-buildx-action@v3
-      - name: Build backend image (local)
+      # Buildx cache to speed up repeat CI builds without pushing images anywhere.
+      # (If you want to also use ECR /cache repos, we can add an optional registry cache export on push-to-main.)
+      - name: Build backend image (local, cached)
         if: needs.changes.outputs.backend == 'true'
-        run: docker build -t fence-backend:ci -f backend/Dockerfile --target runtime .
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          target: runtime
+          load: true
+          tags: fence-backend:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Build frontend image (local)
+      - name: Build frontend image (local, cached)
         if: needs.changes.outputs.frontend == 'true'
-        run: docker build -t fence-frontend:ci -f frontend/Dockerfile --target runtime .
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: frontend/Dockerfile
+          target: runtime
+          load: true
+          tags: fence-frontend:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Export backend image artifact (tar)
+        if: needs.changes.outputs.backend == 'true'
+        run: |
+          mkdir -p .image-artifacts
+          docker save fence-backend:ci -o .image-artifacts/fence-backend_ci.tar
+
+      - name: Export frontend image artifact (tar)
+        if: needs.changes.outputs.frontend == 'true'
+        run: |
+          mkdir -p .image-artifacts
+          docker save fence-frontend:ci -o .image-artifacts/fence-frontend_ci.tar
+
+      - name: Upload image artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-images
+          path: .image-artifacts/*.tar
+          if-no-files-found: error
 
   container-structure-tests:
     runs-on: ubuntu-latest
-    needs: [changes, docker-build-and-push-ecr]
-    if: always() && needs.docker-build-and-push-ecr.result == 'success'
+    needs: [changes, docker-build]
+    if: always() && needs.docker-build.result == 'success'
     steps:
       - uses: actions/checkout@v4
+
+      - name: Download built images (tar artifacts)
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images
+          path: .image-artifacts
+
+      - name: Load images into Docker
+        run: |
+          if [ "${{ needs.changes.outputs.backend }}" = "true" ]; then
+            docker load -i .image-artifacts/fence-backend_ci.tar
+          fi
+          if [ "${{ needs.changes.outputs.frontend }}" = "true" ]; then
+            docker load -i .image-artifacts/fence-frontend_ci.tar
+          fi
 
       - name: Install container-structure-test
         run: |
@@ -148,14 +203,29 @@ jobs:
 
   trivy-container-scan:
     runs-on: ubuntu-latest
-    needs: [changes, docker-build-and-push-ecr]
-    if: always() && needs.docker-build-and-push-ecr.result == 'success'
+    needs: [changes, docker-build]
+    if: always() && needs.docker-build.result == 'success'
     steps:
       - uses: actions/checkout@v4
 
+      - name: Download built images (tar artifacts)
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images
+          path: .image-artifacts
+
+      - name: Load images into Docker
+        run: |
+          if [ "${{ needs.changes.outputs.backend }}" = "true" ]; then
+            docker load -i .image-artifacts/fence-backend_ci.tar
+          fi
+          if [ "${{ needs.changes.outputs.frontend }}" = "true" ]; then
+            docker load -i .image-artifacts/fence-frontend_ci.tar
+          fi
+
       - name: Scan backend image (Trivy)
         if: needs.changes.outputs.backend == 'true'
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: fence-backend:ci
           format: table
@@ -166,7 +236,7 @@ jobs:
 
       - name: Scan frontend image (Trivy)
         if: needs.changes.outputs.frontend == 'true'
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: fence-frontend:ci
           format: table
@@ -176,27 +246,34 @@ jobs:
           severity: "CRITICAL,HIGH"
 
   push-ecr:
-    name: Push images to ECR (only after tests/scans)
+    name: Push images to ECR
     runs-on: ubuntu-latest
-    needs: [changes, docker-build-and-push-ecr, container-structure-tests, trivy-container-scan]
+    needs: [changes, docker-build, container-structure-tests, trivy-container-scan]
     if: >
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
-      needs.docker-build-and-push-ecr.result == 'success' &&
+      needs.docker-build.result == 'success' &&
       needs.container-structure-tests.result == 'success' &&
       needs.trivy-container-scan.result == 'success'
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build backend image (local)
-        if: needs.changes.outputs.backend == 'true'
-        run: docker build -t fence-backend:ci -f backend/Dockerfile --target runtime .
+      - name: Download built images (tar artifacts)
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images
+          path: .image-artifacts
 
-      - name: Build frontend image (local)
-        if: needs.changes.outputs.frontend == 'true'
-        run: docker build -t fence-frontend:ci -f frontend/Dockerfile --target runtime .
+      - name: Load images into Docker
+        run: |
+          if [ "${{ needs.changes.outputs.backend }}" = "true" ]; then
+            docker load -i .image-artifacts/fence-backend_ci.tar
+          fi
+          if [ "${{ needs.changes.outputs.frontend }}" = "true" ]; then
+            docker load -i .image-artifacts/fence-frontend_ci.tar
+          fi
 
-      - name: Configure AWS credentials (OIDC → IAM role)
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
@@ -206,7 +283,7 @@ jobs:
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Tag and push backend → ECR
+      - name: Tag and push backend to ECR
         if: needs.changes.outputs.backend == 'true'
         run: |
           docker tag fence-backend:ci "${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_BACKEND_REPO }}:${{ github.sha }}"
@@ -214,7 +291,7 @@ jobs:
           docker push "${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_BACKEND_REPO }}:${{ github.sha }}"
           docker push "${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_BACKEND_REPO }}:latest"
 
-      - name: Tag and push frontend → ECR
+      - name: Tag and push frontend to ECR
         if: needs.changes.outputs.frontend == 'true'
         run: |
           docker tag fence-frontend:ci "${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_FRONTEND_REPO }}:${{ github.sha }}"
