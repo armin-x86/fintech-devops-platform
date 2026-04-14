@@ -30,12 +30,16 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/next.config.js ./next.config.js
 
+# We don't need npm/npx to run Next.js in production. Removing it avoids
+# Trivy findings in npm's bundled transitive dependencies (glob/minimatch/tar/...).
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
+
 USER nextjs
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
   CMD wget -qO- http://127.0.0.1:3000/ >/dev/null 2>&1 || exit 1
 
-CMD ["npm", "run", "start", "--", "-p", "3000"]
+CMD ["./node_modules/.bin/next", "start", "-p", "3000"]
 
 FROM deps AS dev
 ENV NODE_ENV=development
