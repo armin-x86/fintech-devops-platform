@@ -26,7 +26,7 @@ infra/terraform/aws/
 
 ## Delivery path (images → cluster)
 
-1. **GitHub Actions** (`.github/workflows/ci.yml`) builds container images and pushes to **ECR** (`fence-backend`, `fence-frontend`) using **OIDC** to assume an IAM role (no long-lived AWS keys in GitHub).
+1. **GitHub Actions** (`.github/workflows/ci.yml`) builds container images and pushes to **ECR** (`companyNM-backend`, `companyNM-frontend`) using **OIDC** to assume an IAM role (no long-lived AWS keys in GitHub).
 2. **Helm** charts under `backend/helm/` and `frontend/helm/` describe how workloads run on Kubernetes (Service, Ingress for the frontend, NetworkPolicies, etc.).
 3. **Deploy workflow** (`.github/workflows/deploy.yml`) is **mocked** in-repo but shows the intended Helm `--set image.repository` / `image.tag` against the ECR registry; **production** uses a GitHub **Environment** for optional manual approval (documented in the root `README.md`).
 

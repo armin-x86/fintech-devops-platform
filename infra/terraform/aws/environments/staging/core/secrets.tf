@@ -1,6 +1,6 @@
 locals {
   app_secrets = {
-    fence-infra = {
+    companyNM-infra = {
       # Just a single secret to avoid leaving it empty. I real infra, we will have secrets
       # for our apps like, prometheus,grafana, semaphore and ...
       grafana = {}

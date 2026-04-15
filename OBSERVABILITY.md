@@ -1,6 +1,6 @@
 # Observability (high level)
 
-I keep this repository small on purpose,nothing here provisions Prometheus, Grafana, or CloudWatch in Terraform. The product context I have in mind is a **business logic of fence that we discussed in the initial interviews for the lending and borrowing platform**, with millions of events across applications, integrations, and async pipelines . Below is what I would instrument and document as I connect real backends to a lending platform—not as a guarantee of what ships in this demo repo.
+I keep this repository small on purpose,nothing here provisions Prometheus, Grafana, or CloudWatch in Terraform. The product context I have in mind is a **business logic of companyNM that we discussed in the initial interviews for the lending and borrowing platform**, with millions of events across applications, integrations, and async pipelines . Below is what I would instrument and document as I connect real backends to a lending platform—not as a guarantee of what ships in this demo repo.
 
 ## Metrics I would collect (and why)
 
@@ -42,5 +42,5 @@ I would add a **business or risk summary row** once I have trustworthy metrics (
 
 - **in this repo** apps log to **stdout/stderr**; the backend emits **JSON** (`backend/app/main.py`) so I can parse and correlate fields in a log platform.
 - **On Kubernetes:** I would run a **DaemonSet** collector (e.g. **Allow**) and ship to **CloudWatch Logs**, **Loki**, or **OpenSearch**, with retention and access policies that match **banking and privacy** expectations.
-- **And as fence is a fintech at scale:** I think we are forced to treat logs as **audit-adjacent** and this is not our optional choice. I rely on structured fields (tenant, request or correlation id, event id) and avoid logging sensitive payloads verbatim. 
+- **And as companyNM is a fintech at scale:** I think we are forced to treat logs as **audit-adjacent** and this is not our optional choice. I rely on structured fields (tenant, request or correlation id, event id) and avoid logging sensitive payloads verbatim. 
 - **Next steps I would add:** **OpenTelemetry** (traces + metrics) [I had also pyroscope in previous firm].

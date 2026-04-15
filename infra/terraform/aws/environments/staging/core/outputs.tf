@@ -10,7 +10,7 @@ output "github_actions_oidc_provider_url" {
 }
 
 output "github_actions_ecr_role_arn" {
-  description = "IAM role for GitHub Actions OIDC (configure-aws-credentials role-to-assume). Allows push to fence-* ECR repos."
+  description = "IAM role for GitHub Actions OIDC (configure-aws-credentials role-to-assume). Allows push to companyNM-* ECR repos."
   value       = aws_iam_role.github_actions_ecr.arn
 }
 

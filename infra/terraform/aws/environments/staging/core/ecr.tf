@@ -3,10 +3,10 @@ locals {
   github_actions_ecr_role_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.github_actions_ecr_role_name}"
 
   repos = {
-    "fence-backend" : {
+    "companyNM-backend" : {
       enable_cache = true
     }
-    "fence-frontend" : {
+    "companyNM-frontend" : {
       enable_cache = true
     }
   }

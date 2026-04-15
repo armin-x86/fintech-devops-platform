@@ -3,7 +3,7 @@ locals {
   environment       = "staging"
   aws_region        = "eu-west-1"
   namespace         = "ateimouri.com"
-  organisation      = "fence"
+  organisation      = "companyNM"
   business_unit     = "infra"
   secrets_namespace = "team-infra/portfolio"
   r53_zone          = "portfolio.ateimouri.com"

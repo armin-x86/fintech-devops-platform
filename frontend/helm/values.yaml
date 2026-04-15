@@ -1,7 +1,7 @@
 replicaCount: 2
 
 image:
-  repository: 216315649159.dkr.ecr.eu-west-1.amazonaws.com/fence-frontend
+  repository: 216315649159.dkr.ecr.eu-west-1.amazonaws.com/companyNM-frontend
   tag: latest
   pullPolicy: IfNotPresent
 
