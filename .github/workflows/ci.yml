@@ -18,8 +18,8 @@ env:
   # This avoids upcoming runner default changes and deprecation warnings.
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   AWS_REGION: eu-west-1
-  ECR_BACKEND_REPO: fence-backend
-  ECR_FRONTEND_REPO: fence-frontend
+  ECR_BACKEND_REPO: companyNM-backend
+  ECR_FRONTEND_REPO: companyNM-frontend
 
 jobs:
   changes:
@@ -129,7 +129,7 @@ jobs:
           file: backend/Dockerfile
           target: runtime
           load: true
-          tags: fence-backend:ci
+          tags: companyNM-backend:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -141,7 +141,7 @@ jobs:
           file: frontend/Dockerfile
           target: runtime
           load: true
-          tags: fence-frontend:ci
+          tags: companyNM-frontend:ci
           # For security scanning we want the deps layer to reflect current lockfile,
           # not a previously cached node_modules tree.
           no-cache: true
@@ -150,13 +150,13 @@ jobs:
         if: needs.changes.outputs.backend == 'true'
         run: |
           mkdir -p image-artifacts
-          docker save fence-backend:ci -o image-artifacts/fence-backend_ci.tar
+          docker save companyNM-backend:ci -o image-artifacts/companyNM-backend_ci.tar
 
       - name: Export frontend image artifact (tar)
         if: needs.changes.outputs.frontend == 'true'
         run: |
           mkdir -p image-artifacts
-          docker save fence-frontend:ci -o image-artifacts/fence-frontend_ci.tar
+          docker save companyNM-frontend:ci -o image-artifacts/companyNM-frontend_ci.tar
 
       - name: Verify exported image artifacts exist
         run: |
@@ -191,10 +191,10 @@ jobs:
       - name: Load images into Docker
         run: |
           if [ "${{ needs.changes.outputs.backend }}" = "true" ]; then
-            docker load -i image-artifacts/fence-backend_ci.tar
+            docker load -i image-artifacts/companyNM-backend_ci.tar
           fi
           if [ "${{ needs.changes.outputs.frontend }}" = "true" ]; then
-            docker load -i image-artifacts/fence-frontend_ci.tar
+            docker load -i image-artifacts/companyNM-frontend_ci.tar
           fi
 
       - name: Install container-structure-test
@@ -206,10 +206,10 @@ jobs:
       - name: Run structure tests
         run: |
           if [ "${{ needs.changes.outputs.backend }}" = "true" ]; then
-            container-structure-test test --image fence-backend:ci --config tests/container-structure/backend.yaml
+            container-structure-test test --image companyNM-backend:ci --config tests/container-structure/backend.yaml
           fi
           if [ "${{ needs.changes.outputs.frontend }}" = "true" ]; then
-            container-structure-test test --image fence-frontend:ci --config tests/container-structure/frontend.yaml
+            container-structure-test test --image companyNM-frontend:ci --config tests/container-structure/frontend.yaml
           fi
 
   trivy-container-scan:
@@ -228,17 +228,17 @@ jobs:
       - name: Load images into Docker
         run: |
           if [ "${{ needs.changes.outputs.backend }}" = "true" ]; then
-            docker load -i image-artifacts/fence-backend_ci.tar
+            docker load -i image-artifacts/companyNM-backend_ci.tar
           fi
           if [ "${{ needs.changes.outputs.frontend }}" = "true" ]; then
-            docker load -i image-artifacts/fence-frontend_ci.tar
+            docker load -i image-artifacts/companyNM-frontend_ci.tar
           fi
 
       - name: Scan backend image (Trivy)
         if: needs.changes.outputs.backend == 'true'
         uses: aquasecurity/trivy-action@0.35.0
         with:
-          image-ref: fence-backend:ci
+          image-ref: companyNM-backend:ci
           format: table
           exit-code: "1"
           ignore-unfixed: true
@@ -249,7 +249,7 @@ jobs:
         if: needs.changes.outputs.frontend == 'true'
         uses: aquasecurity/trivy-action@0.35.0
         with:
-          image-ref: fence-frontend:ci
+          image-ref: companyNM-frontend:ci
           format: table
           exit-code: "1"
           ignore-unfixed: true
@@ -278,10 +278,10 @@ jobs:
       - name: Load images into Docker
         run: |
           if [ "${{ needs.changes.outputs.backend }}" = "true" ]; then
-            docker load -i image-artifacts/fence-backend_ci.tar
+            docker load -i image-artifacts/companyNM-backend_ci.tar
           fi
           if [ "${{ needs.changes.outputs.frontend }}" = "true" ]; then
-            docker load -i image-artifacts/fence-frontend_ci.tar
+            docker load -i image-artifacts/companyNM-frontend_ci.tar
           fi
 
       - name: Configure AWS credentials
@@ -297,15 +297,15 @@ jobs:
       - name: Tag and push backend to ECR
         if: needs.changes.outputs.backend == 'true'
         run: |
-          docker tag fence-backend:ci "${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_BACKEND_REPO }}:${{ github.sha }}"
-          docker tag fence-backend:ci "${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_BACKEND_REPO }}:latest"
+          docker tag companyNM-backend:ci "${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_BACKEND_REPO }}:${{ github.sha }}"
+          docker tag companyNM-backend:ci "${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_BACKEND_REPO }}:latest"
           docker push "${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_BACKEND_REPO }}:${{ github.sha }}"
           docker push "${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_BACKEND_REPO }}:latest"
 
       - name: Tag and push frontend to ECR
         if: needs.changes.outputs.frontend == 'true'
         run: |
-          docker tag fence-frontend:ci "${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_FRONTEND_REPO }}:${{ github.sha }}"
-          docker tag fence-frontend:ci "${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_FRONTEND_REPO }}:latest"
+          docker tag companyNM-frontend:ci "${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_FRONTEND_REPO }}:${{ github.sha }}"
+          docker tag companyNM-frontend:ci "${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_FRONTEND_REPO }}:latest"
           docker push "${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_FRONTEND_REPO }}:${{ github.sha }}"
           docker push "${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_FRONTEND_REPO }}:latest"

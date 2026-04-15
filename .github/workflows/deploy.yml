@@ -1,4 +1,4 @@
-# Deploy (mocked): image URIs align with ECR repos fence-backend / fence-frontend.
+# Deploy (mocked): image URIs align with ECR repos companyNM-backend / companyNM-frontend.
 # Set GitHub variable AWS_ACCOUNT_ID (12 digits) or replace in helm --set manually.
 
 name: Deploy
@@ -23,8 +23,8 @@ env:
   NAMESPACE: fintech
   RELEASE_FRONTEND: fintech-frontend
   RELEASE_BACKEND: fintech-backend
-  ECR_BACKEND_REPO: fence-backend
-  ECR_FRONTEND_REPO: fence-frontend
+  ECR_BACKEND_REPO: companyNM-backend
+  ECR_FRONTEND_REPO: companyNM-frontend
 
 jobs:
   deploy-staging:

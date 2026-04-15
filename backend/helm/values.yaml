@@ -1,8 +1,8 @@
 replicaCount: 2
 
 image:
-  # ECR: <account>.dkr.ecr.<region>.amazonaws.com/fence-backend
-  repository: 216315649159.dkr.ecr.eu-west-1.amazonaws.com/fence-backend
+  # ECR: <account>.dkr.ecr.<region>.amazonaws.com/companyNM-backend
+  repository: 216315649159.dkr.ecr.eu-west-1.amazonaws.com/companyNM-backend
   tag: latest
   pullPolicy: IfNotPresent
 

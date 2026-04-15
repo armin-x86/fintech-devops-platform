@@ -86,7 +86,7 @@ data "aws_iam_policy_document" "github_actions_ecr_push" {
   }
 
   statement {
-    sid    = "EcrPushFenceRepositories"
+    sid    = "EcrPushcompanyNMRepositories"
     effect = "Allow"
     actions = [
       "ecr:BatchCheckLayerAvailability",
@@ -103,16 +103,16 @@ data "aws_iam_policy_document" "github_actions_ecr_push" {
       "ecr:DescribeImageScanFindings",
     ]
     resources = [
-      "arn:aws:ecr:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:repository/fence-backend",
-      "arn:aws:ecr:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:repository/fence-frontend",
-      "arn:aws:ecr:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:repository/fence-backend/cache",
-      "arn:aws:ecr:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:repository/fence-frontend/cache",
+      "arn:aws:ecr:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:repository/companyNM-backend",
+      "arn:aws:ecr:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:repository/companyNM-frontend",
+      "arn:aws:ecr:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:repository/companyNM-backend/cache",
+      "arn:aws:ecr:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:repository/companyNM-frontend/cache",
     ]
   }
 }
 
 resource "aws_iam_role_policy" "github_actions_ecr_push" {
-  name   = "ecr-push-fence-repos"
+  name   = "ecr-push-companyNM-repos"
   role   = aws_iam_role.github_actions_ecr.id
   policy = data.aws_iam_policy_document.github_actions_ecr_push.json
 }

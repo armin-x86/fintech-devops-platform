@@ -45,10 +45,10 @@ export REGISTRY="<account>.dkr.ecr.eu-west-1.amazonaws.com"
 export TAG="<git-sha-or-latest>"
 
 helm upgrade --install fintech-backend backend/helm/backend --namespace fintech --create-namespace \
-  --set image.repository="${REGISTRY}/fence-backend" --set image.tag="${TAG}"
+  --set image.repository="${REGISTRY}/companyNM-backend" --set image.tag="${TAG}"
 
 helm upgrade --install fintech-frontend frontend/helm/frontend --namespace fintech \
-  --set image.repository="${REGISTRY}/fence-frontend" --set image.tag="${TAG}"
+  --set image.repository="${REGISTRY}/companyNM-frontend" --set image.tag="${TAG}"
 ```
 
 The **mocked** deploy workflow (`.github/workflows/deploy.yml`) only **prints** these-style values; it does not run `helm` for you.
@@ -82,7 +82,7 @@ helm upgrade --install fintech-frontend . -n fintech -f values.yaml
 ## CI/CD overview
 
 - **GitHub Actions → AWS**: add repository **variable** **`AWS_ROLE_ARN`** = Terraform output `github_actions_ecr_role_arn` (OIDC; no long-lived AWS keys). The workflow uses `vars.AWS_ROLE_ARN` for `configure-aws-credentials`.
-- **ECR image repos**: **`fence-backend`** and **`fence-frontend`** (tags `latest` and `${{ github.sha }}` on pushes to `main`). Repositories **`fence-backend/cache`** and **`fence-frontend/cache`** exist for pull-through / cache use in Terraform; CI does **not** push app images there.
+- **ECR image repos**: **`companyNM-backend`** and **`companyNM-frontend`** (tags `latest` and `${{ github.sha }}` on pushes to `main`). Repositories **`companyNM-backend/cache`** and **`companyNM-frontend/cache`** exist for pull-through / cache use in Terraform; CI does **not** push app images there.
 - `.github/workflows/ci.yml`
   - **Path-based**: backend jobs run only when `backend/**` (or shared `docker-compose.yml` / this workflow) changes; frontend jobs only when `frontend/**` (or those shared files) changes.
   - Backend: ruff + pytest + `pip-audit`
